@@ -6,7 +6,10 @@ import ilp.samad.ilpcoursework1.data.drone.*;
 import ilp.samad.ilpcoursework1.data.geometry.RestrictedArea;
 import ilp.samad.ilpcoursework1.data.request.MedDispatchRec;
 import ilp.samad.ilpcoursework1.data.request.Query;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.DayOfWeek;
@@ -18,6 +21,8 @@ import java.util.Optional;
 
 @Service
 public class DroneService {
+    private static final Logger logger = LoggerFactory.getLogger(DroneService.class);
+
     private final String ilpServiceEndpoint;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
@@ -30,53 +35,57 @@ public class DroneService {
 
     public List<String> getDronesWithCooling(boolean state) {
         String url = ilpServiceEndpoint + "drones";
+        try {
+            Drone[] allDrones = restTemplate.getForObject(url, Drone[].class);
+            if (allDrones == null) return List.of();
 
-        Drone[] allDrones = restTemplate.getForObject(url, Drone[].class);
-
-        if (allDrones == null) {
+            // only keep drones which match state, and return collected IDs as a list
+            return Arrays.stream(allDrones)
+                    .filter(drone -> drone.capability().cooling() == state)
+                    .map(Drone::id)
+                    .toList();
+        } catch (RestClientException e) {
+            logger.error("Alert - Failed to fetch drones: {}", e.getMessage());
             return List.of();
         }
-
-        // only keep drones which match state, and return collected IDs as a list
-        return Arrays.stream(allDrones)
-                .filter(drone -> drone.capability().cooling() == state)
-                .map(Drone::id)
-                .toList();
     }
 
     public Optional<Drone> getDrone(String id) {
         String url = ilpServiceEndpoint + "drones";
+        try {
+            Drone[] allDrones = restTemplate.getForObject(url, Drone[].class);
+            if (allDrones == null) return Optional.empty();
 
-        Drone[] allDrones = restTemplate.getForObject(url, Drone[].class);
-
-        if (allDrones == null) {
+            return Arrays.stream(allDrones)
+                    .filter(drone -> drone.id().equals(id))
+                    .findFirst();
+        } catch (RestClientException e) {
+            logger.error("Alert - Failed to retrieve drone {}: {}", id, e.getMessage());
             return Optional.empty();
         }
-
-        return Arrays.stream(allDrones)
-                .filter(drone -> drone.id().equals(id))
-                .findFirst();
     }
 
     public List<String> getDronesByQuery(List<Query> queries) {
         String url = ilpServiceEndpoint + "drones";
-        Drone[] allDrones = restTemplate.getForObject(url, Drone[].class);
+        try {
+            Drone[] allDrones = restTemplate.getForObject(url, Drone[].class);
+            if (allDrones == null) return List.of();
 
-        if (allDrones == null) {
+            return Arrays.stream(allDrones)
+                    .filter(drone -> {
+                        for (Query q : queries) {
+                            if (!checkCondition(drone, q.attribute(), q.operator(), q.value())) {
+                                return false;
+                            }
+                        }
+                        return true;
+                    })
+                    .map(Drone::id)
+                    .toList();
+        } catch (RestClientException e) {
+            logger.error("Alert - External API Error during drone query: {}", e.getMessage());
             return List.of();
         }
-
-        return Arrays.stream(allDrones)
-                .filter(drone -> {
-                    for (Query q : queries) {
-                        if (!checkCondition(drone, q.attribute(), q.operator(), q.value())) {
-                            return false;
-                        }
-                    }
-                    return true;
-                })
-                .map(Drone::id)
-                .toList();
     }
 
     private boolean checkCondition(Drone drone, String attribute, String operator, String value) {
@@ -136,25 +145,25 @@ public class DroneService {
         String dronesUrl = ilpServiceEndpoint + "drones";
         String availabilityUrl = ilpServiceEndpoint + "drones-for-service-points";
 
-        Drone[] allDronesArr = restTemplate.getForObject(dronesUrl, Drone[].class);
-        ServicePointDrones[] allAvailability = restTemplate.getForObject(availabilityUrl, ServicePointDrones[].class);
+        try {
+            Drone[] allDronesArr = restTemplate.getForObject(dronesUrl, Drone[].class);
+            ServicePointDrones[] allAvailability = restTemplate.getForObject(availabilityUrl, ServicePointDrones[].class);
 
-        if (allDronesArr == null || allAvailability == null) return List.of();
+            if (allDronesArr == null || allAvailability == null) return List.of();
 
-        List<Drone> candidates = Arrays.asList(allDronesArr);
-
-        for (MedDispatchRec order : orders) {
-            candidates = candidates.stream()
-                    .filter(drone -> canHandleOrder(drone, order, allAvailability))
-                    .toList();
-            if (candidates.isEmpty()) {
-                return List.of();
+            List<Drone> candidates = Arrays.asList(allDronesArr);
+            for (MedDispatchRec order : orders) {
+                candidates = candidates.stream()
+                        .filter(drone -> canHandleOrder(drone, order, allAvailability))
+                        .toList();
+                if (candidates.isEmpty()) return List.of();
             }
-        }
 
-        return candidates.stream()
-                .map(Drone::id)
-                .toList();
+            return candidates.stream().map(Drone::id).toList();
+        } catch (RestClientException e) {
+            logger.error("Alert - Connectivity error during availability check: {}", e.getMessage());
+            return List.of();
+        }
     }
 
 

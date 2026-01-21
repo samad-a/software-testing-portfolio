@@ -1,5 +1,9 @@
 package ilp.samad.ilpcoursework1;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import ilp.samad.ilpcoursework1.data.geometry.LngLat;
+import ilp.samad.ilpcoursework1.data.request.MedDispatchRec;
+import ilp.samad.ilpcoursework1.data.request.Requirements;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,6 +12,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -18,6 +27,8 @@ public class ApplicationSystemTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private ObjectMapper objectMapper;
 
     // - /actuator/health
     @Test
@@ -39,6 +50,88 @@ public class ApplicationSystemTest {
                 .andExpect(content().string("s2544386"));
     }
 
+    @Test
+    @DisplayName("POST /api/v1/calcDeliveryPath - Process valid orders within performance limits")
+    void testCalcDeliveryPathWithRealisticOrders() throws Exception {
+        String ordersJson = """
+        [
+          {
+            "id": 201,
+            "date": "2025-12-01",
+            "time": "10:00:00",
+            "delivery": { "lng": -3.1910, "lat": 55.9455 },
+            "requirements": { "capacity": 1.0, "cooling": true, "heating": false, "maxCost": 25.0 }
+          },
+          {
+            "id": 202,
+            "date": "2025-12-01",
+            "time": "10:00:00",
+            "delivery": { "lng": -3.1873, "lat": 55.9452 },
+            "requirements": { "capacity": 1.5, "cooling": true, "heating": false, "maxCost": 25.0 }
+          }
+        ]
+        """;
+
+        long startTime = System.currentTimeMillis();
+
+        mockMvc.perform(post("/api/v1/calcDeliveryPath")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(ordersJson))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCost").exists())
+                .andExpect(jsonPath("$.totalMoves").exists())
+                .andExpect(jsonPath("$.dronePaths").isArray())
+                .andExpect(jsonPath("$.dronePaths[0].deliveries[?(@.deliveryId == 201)]").exists());
+
+        long duration = System.currentTimeMillis() - startTime;
+
+        assertTrue(duration < 30000, "Performance Failure: Path calculation took too long (" + duration + "ms)");
+    }
+
+    @Test
+    @DisplayName("Pro-Rata Cost Check - Verify distribution across batched flight")
+    void testProRataCostDistribution() throws Exception {
+        List<MedDispatchRec> orders = List.of(
+                new MedDispatchRec(
+                        1,
+                        LocalDate.of(2025, 1, 20),
+                        LocalTime.of(10, 0),
+                        new Requirements(5.0, false, false, 2500.0),
+                        new LngLat(-3.186, 55.944)
+                ),
+                new MedDispatchRec(
+                        2,
+                        LocalDate.of(2025, 1, 20),
+                        LocalTime.of(10, 0),
+                        new Requirements(5.0, false, false, 2500.0),
+                        new LngLat(-3.187, 55.945)
+                )
+        );
+
+        mockMvc.perform(post("/api/v1/calcDeliveryPath")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(orders)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCost").exists())
+                .andExpect(jsonPath("$.dronePaths").isArray())
+                .andExpect(jsonPath("$.dronePaths[0].deliveries").isArray());
+    }
+
+    @Test
+    @DisplayName("System Constraint - Path exceeding battery limit")
+    void testPathExceedingBatteryLimit() throws Exception {
+        String lowBatteryJson = """
+    [{
+        "id": 999,
+        "date": "2025-12-01", "time": "10:00:00",
+        "delivery": { "lng": -3.1910, "lat": 55.9455 },
+        "requirements": { "capacity": 1.0, "cooling": true, "heating": false, "maxCost": 1.0 }
+    }]
+    """;
+        mockMvc.perform(post("/api/v1/calcDeliveryPath").contentType(MediaType.APPLICATION_JSON).content(lowBatteryJson))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dronePaths").isEmpty());
+    }
 
 
     // - /distanceTo
