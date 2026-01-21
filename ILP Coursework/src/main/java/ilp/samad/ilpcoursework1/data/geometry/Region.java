@@ -1,11 +1,13 @@
 package ilp.samad.ilpcoursework1.data.geometry;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 // minimum 4 vertices as polygon has min 3 vertices, and last vertex needs to close the polygon to be valid
 public record Region(
         @NotNull String name,

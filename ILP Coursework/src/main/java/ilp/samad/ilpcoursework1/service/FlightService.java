@@ -8,6 +8,8 @@ import ilp.samad.ilpcoursework1.data.request.MedDispatchRec;
 import ilp.samad.ilpcoursework1.data.response.Delivery;
 import ilp.samad.ilpcoursework1.data.response.DronePath;
 import ilp.samad.ilpcoursework1.data.response.FlightResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -17,6 +19,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class FlightService {
+    private static final Logger logger = LoggerFactory.getLogger(FlightService.class);
     private final DroneService droneService;
     private final PathService pathService;
     private final CalculationService calculationService;
@@ -28,6 +31,9 @@ public class FlightService {
     }
 
     public FlightResponse calculateDeliveryPath(List<MedDispatchRec> orders) {
+        long startTime = System.currentTimeMillis();
+        logger.info("Starting delivery path calculation for {} orders.", orders.size());
+
         List<RestrictedArea> noFlyZones = droneService.getNoFlyZones();
 
         Map<LocalDate, List<MedDispatchRec>> ordersByDate = orders.stream()
@@ -162,6 +168,14 @@ public class FlightService {
 
                 pendingOrders.removeAll(packedOrders);
             }
+        }
+
+        long duration = System.currentTimeMillis() - startTime;
+
+        logger.info("Total delivery path calculated in {}ms", duration);
+
+        if (duration > 30000) {
+            logger.warn("WARNING, execution time exceeded the 30-second requirement!");
         }
 
         return new FlightResponse(totalCost, totalMoves, allDronePaths);

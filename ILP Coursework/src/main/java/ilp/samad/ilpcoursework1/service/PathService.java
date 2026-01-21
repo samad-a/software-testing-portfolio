@@ -3,6 +3,8 @@ package ilp.samad.ilpcoursework1.service;
 import ilp.samad.ilpcoursework1.data.geometry.LngLat;
 import ilp.samad.ilpcoursework1.data.geometry.RestrictedArea;
 import ilp.samad.ilpcoursework1.data.geometry.Region;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.awt.geom.Line2D;
@@ -10,6 +12,7 @@ import java.util.*;
 
 @Service
 public class PathService {
+    private static final Logger logger = LoggerFactory.getLogger(PathService.class);
 
     private static final double MOVE_DISTANCE = 0.00015;
     private final CalculationService calculationService;
@@ -28,6 +31,12 @@ public class PathService {
 
         while (!openSet.isEmpty()) {
             Node current = openSet.poll();
+
+            logger.info("A* currently exploring -> G-score: {}, F-score: {} at [{}, {}]",
+                    current.gScore,
+                    current.fScore,
+                    current.position.lng(),
+                    current.position.lat());
 
             if (calculationService.calculateClose(current.position, end)) {
                 return reconstructPath(current);
@@ -60,7 +69,7 @@ public class PathService {
         return List.of();
     }
 
-    private double heuristic(LngLat a, LngLat b) {
+    public double heuristic(LngLat a, LngLat b) {
         return calculationService.calculateDistance(a, b);
     }
 
@@ -79,7 +88,7 @@ public class PathService {
     }
 
     // avoids corner cutting
-    private boolean doesLineIntersectPolygon(LngLat start, LngLat end, List<LngLat> vertices) {
+    public boolean doesLineIntersectPolygon(LngLat start, LngLat end, List<LngLat> vertices) {
         for (int i = 0; i < vertices.size(); i++) {
             LngLat p1 = vertices.get(i);
             LngLat p2 = vertices.get((i + 1) % vertices.size());
@@ -95,7 +104,7 @@ public class PathService {
         return false;
     }
 
-    private List<LngLat> reconstructPath(Node current) {
+    public List<LngLat> reconstructPath(Node current) {
         List<LngLat> path = new ArrayList<>();
         while (current != null) {
             path.addFirst(current.position);
@@ -108,13 +117,13 @@ public class PathService {
         return pos.lng() + "," + pos.lat();
     }
 
-    private static class Node {
+    public static class Node {
         LngLat position;
         double gScore;
         double fScore;
         Node parent;
 
-        Node(LngLat position, double gScore, double fScore, Node parent) {
+        public Node(LngLat position, double gScore, double fScore, Node parent) {
             this.position = position;
             this.gScore = gScore;
             this.fScore = fScore;

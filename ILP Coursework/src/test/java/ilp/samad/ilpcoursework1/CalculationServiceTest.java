@@ -24,7 +24,7 @@ public class CalculationServiceTest {
     void setUp() {
         calculationService = new CalculationService();
         squareRegion = new Region("square", List.of(
-                new LngLat(0.0, 0.0), new LngLat(2.0, 0.0),
+                    new LngLat(0.0, 0.0), new LngLat(2.0, 0.0),
                 new LngLat(2.0, 2.0), new LngLat(0.0, 2.0),
                 new LngLat(0.0, 0.0)
         ));
@@ -102,9 +102,27 @@ public class CalculationServiceTest {
     // START OF MOVEMENT CALCULATION TESTS
     @Test
     @DisplayName("Check that giving an incorrect angle for movement throws an exception")
-    void testIncorrectMovementAngleCalculation() {
+    void testIncorrectIncrementMovementAngleCalculation() {
         LngLat start = new LngLat(0.0, 0.0);
         double angle = 10.0;
+
+        assertThrows(IllegalArgumentException.class, () -> calculationService.calculateNextPosition(start, angle));
+    }
+
+    @Test
+    @DisplayName("Check that giving an incorrect angle for movement throws an exception")
+    void testIncorrectLargeMovementAngleCalculation() {
+        LngLat start = new LngLat(0.0, 0.0);
+        double angle = 420.0;
+
+        assertThrows(IllegalArgumentException.class, () -> calculationService.calculateNextPosition(start, angle));
+    }
+
+    @Test
+    @DisplayName("Check that giving an incorrect angle for movement throws an exception")
+    void testIncorrectNegativeMovementAngleCalculation() {
+        LngLat start = new LngLat(0.0, 0.0);
+        double angle = -180.0;
 
         assertThrows(IllegalArgumentException.class, () -> calculationService.calculateNextPosition(start, angle));
     }
@@ -121,58 +139,147 @@ public class CalculationServiceTest {
     // Important note for below tests (tests were failing without adding this)
     // For the assertions with doubles, added a 3rd parameter for floating point tolerance
     @Test
-    @DisplayName("Check that East movement is calculated correctly")
-    void testEastMovementCalculation() {
+    @DisplayName("0.0° - East")
+    void testEastMovement() {
         LngLat start = new LngLat(0.0, 0.0);
-        double angle = 0.0;
-        LngLat result = calculationService.calculateNextPosition(start, angle);
-
+        LngLat result = calculationService.calculateNextPosition(start, 0.0);
         assertEquals(0.00015, result.lng(), EPSILON);
         assertEquals(0.0, result.lat(), EPSILON);
     }
 
     @Test
-    @DisplayName("Check that North movement is calculated correctly")
-    void testNorthMovementCalculation() {
+    @DisplayName("22.5° - East-North-East")
+    void testENEMovement() {
         LngLat start = new LngLat(0.0, 0.0);
-        double angle = 90.0;
-        LngLat result = calculationService.calculateNextPosition(start, angle);
+        LngLat result = calculationService.calculateNextPosition(start, 22.5);
+        assertEquals(0.000138581929877, result.lng(), EPSILON);
+        assertEquals(0.000057402514855, result.lat(), EPSILON);
+    }
 
+    @Test
+    @DisplayName("45.0° - North-East")
+    void testNEMovement() {
+        LngLat start = new LngLat(0.0, 0.0);
+        LngLat result = calculationService.calculateNextPosition(start, 45.0);
+        assertEquals(0.000106066017178, result.lng(), EPSILON);
+        assertEquals(0.000106066017178, result.lat(), EPSILON);
+    }
+
+    @Test
+    @DisplayName("67.5° - North-North-East")
+    void testNNEMovement() {
+        LngLat start = new LngLat(0.0, 0.0);
+        LngLat result = calculationService.calculateNextPosition(start, 67.5);
+        assertEquals(0.000057402514855, result.lng(), EPSILON);
+        assertEquals(0.000138581929877, result.lat(), EPSILON);
+    }
+
+    @Test
+    @DisplayName("90.0° - North")
+    void testNorthMovement() {
+        LngLat start = new LngLat(0.0, 0.0);
+        LngLat result = calculationService.calculateNextPosition(start, 90.0);
         assertEquals(0.0, result.lng(), EPSILON);
         assertEquals(0.00015, result.lat(), EPSILON);
     }
 
     @Test
-    @DisplayName("Check that West movement is calculated correctly")
-    void testWestMovementCalculation() {
+    @DisplayName("112.5° - North-North-West")
+    void testNNWMovement() {
         LngLat start = new LngLat(0.0, 0.0);
-        double angle = 180.0;
-        LngLat result = calculationService.calculateNextPosition(start, angle);
+        LngLat result = calculationService.calculateNextPosition(start, 112.5);
+        assertEquals(-0.000057402514855, result.lng(), EPSILON);
+        assertEquals(0.000138581929877, result.lat(), EPSILON);
+    }
 
+    @Test
+    @DisplayName("135.0° - North-West")
+    void testNWMovement() {
+        LngLat start = new LngLat(0.0, 0.0);
+        LngLat result = calculationService.calculateNextPosition(start, 135.0);
+        assertEquals(-0.000106066017178, result.lng(), EPSILON);
+        assertEquals(0.000106066017178, result.lat(), EPSILON);
+    }
+
+    @Test
+    @DisplayName("157.5° - West-North-West")
+    void testWNWMovement() {
+        LngLat start = new LngLat(0.0, 0.0);
+        LngLat result = calculationService.calculateNextPosition(start, 157.5);
+        assertEquals(-0.000138581929877, result.lng(), EPSILON);
+        assertEquals(0.000057402514855, result.lat(), EPSILON);
+    }
+
+    @Test
+    @DisplayName("180.0° - West")
+    void testWestMovement() {
+        LngLat start = new LngLat(0.0, 0.0);
+        LngLat result = calculationService.calculateNextPosition(start, 180.0);
         assertEquals(-0.00015, result.lng(), EPSILON);
         assertEquals(0.0, result.lat(), EPSILON);
     }
 
     @Test
-    @DisplayName("Check that South movement is calculated correctly")
-    void testSouthMovementCalculation() {
+    @DisplayName("202.5° - West-South-West")
+    void testWSWMovement() {
         LngLat start = new LngLat(0.0, 0.0);
-        double angle = 270.0;
-        LngLat result = calculationService.calculateNextPosition(start, angle);
+        LngLat result = calculationService.calculateNextPosition(start, 202.5);
+        assertEquals(-0.000138581929877, result.lng(), EPSILON);
+        assertEquals(-0.000057402514855, result.lat(), EPSILON);
+    }
 
+    @Test
+    @DisplayName("225.0° - South-West")
+    void testSWMovement() {
+        LngLat start = new LngLat(0.0, 0.0);
+        LngLat result = calculationService.calculateNextPosition(start, 225.0);
+        assertEquals(-0.000106066017178, result.lng(), EPSILON);
+        assertEquals(-0.000106066017178, result.lat(), EPSILON);
+    }
+
+    @Test
+    @DisplayName("247.5° - South-South-West")
+    void testSSWMovement() {
+        LngLat start = new LngLat(0.0, 0.0);
+        LngLat result = calculationService.calculateNextPosition(start, 247.5);
+        assertEquals(-0.000057402514855, result.lng(), EPSILON);
+        assertEquals(-0.000138581929877, result.lat(), EPSILON);
+    }
+
+    @Test
+    @DisplayName("270.0° - South")
+    void testSouthMovement() {
+        LngLat start = new LngLat(0.0, 0.0);
+        LngLat result = calculationService.calculateNextPosition(start, 270.0);
         assertEquals(0.0, result.lng(), EPSILON);
         assertEquals(-0.00015, result.lat(), EPSILON);
     }
 
     @Test
-    @DisplayName("Check that North-East movement is calculated correctly")
-    void testNorthEastMovementCalculation() {
+    @DisplayName("292.5° - South-South-East")
+    void testSSEMovement() {
         LngLat start = new LngLat(0.0, 0.0);
-        double angle = 45.0;
-        LngLat result = calculationService.calculateNextPosition(start, angle);
+        LngLat result = calculationService.calculateNextPosition(start, 292.5);
+        assertEquals(0.000057402514855, result.lng(), EPSILON);
+        assertEquals(-0.000138581929877, result.lat(), EPSILON);
+    }
 
-        assertEquals(0.0001060660171, result.lng(), EPSILON);
-        assertEquals(0.0001060660171, result.lat(), EPSILON);
+    @Test
+    @DisplayName("315.0° - South-East")
+    void testSEMovement() {
+        LngLat start = new LngLat(0.0, 0.0);
+        LngLat result = calculationService.calculateNextPosition(start, 315.0);
+        assertEquals(0.000106066017178, result.lng(), EPSILON);
+        assertEquals(-0.000106066017178, result.lat(), EPSILON);
+    }
+
+    @Test
+    @DisplayName("337.5° - East-South-East")
+    void testESEMovement() {
+        LngLat start = new LngLat(0.0, 0.0);
+        LngLat result = calculationService.calculateNextPosition(start, 337.5);
+        assertEquals(0.000138581929877, result.lng(), EPSILON);
+        assertEquals(-0.000057402514855, result.lat(), EPSILON);
     }
 
     @Test

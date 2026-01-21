@@ -170,7 +170,7 @@ public class DroneService {
         return isDroneAvailableAtTime(drone.id(), order.date(), order.time(), allAvailability);
     }
 
-    private boolean isDroneAvailableAtTime(String droneId, LocalDate date, LocalTime time, ServicePointDrones[] allAvailability) {
+    public boolean isDroneAvailableAtTime(String droneId, LocalDate date, LocalTime time, ServicePointDrones[] allAvailability) {
         if (date == null || time == null) return true;
 
         DayOfWeek day = date.getDayOfWeek();
