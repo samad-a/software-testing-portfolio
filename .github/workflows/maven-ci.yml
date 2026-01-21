@@ -1,4 +1,4 @@
-name: MedSupply Drone CI Pipeline
+name: Software Testing for ILP MedSupplyDrone CI Pipeline
 
 on:
   push:
@@ -9,6 +9,9 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: "./ILP Coursework"
 
     steps:
     - name: Checkout Source Code
