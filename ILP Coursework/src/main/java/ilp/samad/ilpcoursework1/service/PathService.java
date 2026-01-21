@@ -114,7 +114,9 @@ public class PathService {
     }
 
     private String key(LngLat pos) {
-        return pos.lng() + "," + pos.lat();
+        double roundedLng = Math.round(pos.lng() * 1e10) / 1e10;
+        double roundedLat = Math.round(pos.lat() * 1e10) / 1e10;
+        return roundedLng + "," + roundedLat;
     }
 
     public static class Node {
