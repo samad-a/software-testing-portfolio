@@ -232,6 +232,7 @@ public class DroneService {
         return getServicePointById(servicePointId);
     }
 
+    // adding a comment for GitHub automation test
     public Optional<ServicePoint> getServicePointById(Integer id) {
         String url = ilpServiceEndpoint + "service-points";
         ServicePoint[] points = restTemplate.getForObject(url, ServicePoint[].class);
